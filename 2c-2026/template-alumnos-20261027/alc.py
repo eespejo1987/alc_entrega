@@ -334,7 +334,16 @@ def aplicar_homografia(H, pts):
         R[i, 1] = y / z
     return R
 
-
+def error_reproyeccion(H, img_pts, obj_pts):
+    """Qué tan lejos (en píxeles, en promedio cuadrático) caen los puntos proyectados con H
+    respecto de donde vos los marcaste. Si da pocos píxeles, H está bien."""
+    pred = aplicar_homografia(H, obj_pts)
+    n = obj_pts.shape[0]
+    suma = 0.0
+    for i in range(n):
+        dx = pred[i, 0] - img_pts[i, 0]; dy = pred[i, 1] - img_pts[i, 1]
+        suma = suma + dx * dx + dy * dy
+    return np.sqrt(suma / n)
 
 """MÓDULO 1"""
 # =============================================================================
