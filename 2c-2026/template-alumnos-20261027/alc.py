@@ -372,6 +372,105 @@ def recta_vertical(c, ancho, N=2):
         R[i, 1] = ancho * i / N
     return R
 
+# Ejercicio 5
+def estimar_focal(Hlst, cx, cy):
+    """(cuando Zhang completo es inestable): se supone skew = 0, píxeles cuadrados
+    (alfa_u = alfa_v = f) y centro óptico (cx, cy) conocido (centro de la imagen). Queda UNA incógnita, f.
+    Si trasladamos el origen de píxeles al centro, K = diag(f, f, 1) y las dos condiciones de Zhang dan:
+        orto:        f^2 = -(a1 . a2) / (h31 h32)
+        igual norma: f^2 = (|a1|^2 - |a2|^2) / (h32^2 - h31^2)
+    con a_i = (primeras dos componentes de la columna i de H centrada) y h3i = su tercera componente.
+    Devuelve las dos estimaciones de f por cada vista (nan si f^2 < 0)."""
+    T = np.array([[1.0, 0.0, -cx], [0.0, 1.0, -cy], [0.0, 0.0, 1.0]])
+    res = []
+    for H in Hlst:
+        #Hc = producto_matriz(T, H)
+        Hc = matriz_x_matriz(T, H)
+        c1 = Hc[:, 0]; c2 = Hc[:, 1]
+        f2_orto = -(c1[0] * c2[0] + c1[1] * c2[1]) / (c1[2] * c2[2])
+        f2_norma = ((c1[0] ** 2 + c1[1] ** 2) - (c2[0] ** 2 + c2[1] ** 2)) / (c2[2] ** 2 - c1[2] ** 2)
+        fo = np.sqrt(f2_orto) if f2_orto > 0 else float('nan')
+        fn = np.sqrt(f2_norma) if f2_norma > 0 else float('nan')
+        res.append((fo, fn))
+    return res
+
+
+def obtenerPose2D_ej5(H, K):
+    """Pose de la vista a partir de H = K [r1 r2 t] (salvo escala) y K.
+        K^-1 H = lambda^-1 [r1 r2 t]   ->   lambda = 1/|K^-1 c1|,  r1 = lambda K^-1 c1,  r2 = lambda K^-1 c2,
+        r3 = r1 x r2,  t = lambda K^-1 c3.
+    El signo de lambda se elige para que el plano quede DELANTE de la cámara (t_z > 0)."""
+    Ki = inversa(K)
+    c1 = matriz_por_vector(Ki, H[:, 0])
+    c2 = matriz_por_vector(Ki, H[:, 1])
+    c3 = matriz_por_vector(Ki, H[:, 2])
+    lam = 1.0 / np.sqrt(producto_interno(c1, c1))
+    if c3[2] < 0:
+        lam = -lam
+    r1 = lam * c1
+    r2 = lam * c2
+    r3 = producto_vectorial(r1, r2)
+    t = lam * c3
+    R = np.zeros((3, 3))
+    for i in range(3):
+        R[i, 0] = r1[i]; R[i, 1] = r2[i]; R[i, 2] = r3[i]
+    return ortogonalizar(R), t
+
+def ortogonalizar(R):
+    """Rotación ortogonal a partir de R (que con ruido no es exactamente una rotación):
+    las columnas se vuelven ortonormales con Gram-Schmidt (QR_con_GS) y nos quedamos con Q."""
+    Q, _ = QR_con_GS(R)
+    return Q
+
+def producto_interno(a, b):
+    """Producto interno """
+    s = 0.0
+    for i in range(len(a)):
+        s = s + a[i] * b[i]
+    return s
+
+
+def centro_camara(R, t):
+    """Posición de la cámara en el mundo: C = -R^t t (para chequear que la altura sea razonable)."""
+    return -matriz_por_vector(transpuesta(R), t)
+
+
+def armar_M(K, R, t):
+    """Matriz de proyección M = K [R | t] (3x4).
+    Parámetros: K (3x3), R (3x3), t (vector de 3). Devuelve M (3x4)."""
+    Rt = np.zeros((3, 4))
+    for i in range(3):
+        for j in range(3):
+            Rt[i, j] = R[i, j]
+        Rt[i, 3] = t[i]
+    return matriz_x_matriz(K, Rt)
+
+
+def proyectar_M_ej5(M, P3):
+    """Proyecta puntos 3D con la matriz M (3x4).
+    Parámetros: M (3x4), P3 (n x 3, cada fila es un punto X, Y, Z en metros).
+    Devuelve los píxeles (n x 2): cada fila es (u, v)."""
+    n = len(P3)
+    pix = np.zeros((n, 2))
+    for i in range(n):
+        p = np.array([P3[i][0], P3[i][1], P3[i][2], 1.0])   # punto en homogéneas (X, Y, Z, 1)
+        q = matriz_por_vector(M, p)                          # q = M p, vector de 3
+        pix[i, 0] = q[0] / q[2]                              # dehomogeneizar: u = q1 / q3
+        pix[i, 1] = q[1] / q[2]                              # v = q2 / q3
+    return pix    
+
+
+def error_reproyeccion_3d_ej5(M, uv, P3):
+    """Error RMS de reproyección (en píxeles) de un conjunto de puntos 3D."""
+    pred = proyectar_M_ej5(M, P3)
+    n = len(P3)
+    s = 0.0
+    for i in range(n):
+        du = pred[i, 0] - uv[i][0]
+        dv = pred[i, 1] - uv[i][1]
+        s = s + du * du + dv * dv
+    return np.sqrt(s / n)
+
 """MÓDULO 1"""
 # =============================================================================
 # Recibe dos numeros x e y, y calcula el error de aproximar 
