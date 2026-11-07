@@ -109,6 +109,8 @@ def devolverMatricesCalibracion3d(M):
     t = s * matriz_por_vector(R1, b)
 
     return R, t, K
+
+
 ## EJERCICIO 3  ##
 def obtenerQ2d(datos_2d_imagen, datos_2d_objeto):
     """Construye Q para las correspondencias entre puntos 2D."""

@@ -71,23 +71,46 @@ for x in range(0,len(datos_r2),1):
     Q=obtenerQ3d(datos_r2[x],datos_r3)
     nucleo = null_space(Q)
     print(f'El nucleo de la matriz {x} es : {nucleo}')
-    
-# 2B 
-def resolverDLT3D(Q):
-    #construimos A=QtQ
-    Qt= transpuesta(Q)
-    A = matriz_x_matriz(Qt,Q)
-    # diagonalizamos A
-    S,D= diagRH(A)
-    # busco el menor autovalor
-    indice = 0
-    for i in range(1,D.shape[0]):
-        if D[i,i] < D[indice,indice]:
-            indice = i
-    # autovector correspondiente
-    m = S[:,indice]
-    # normalizamos
-    m = m/norma(m,2)
-    # construimos la matriz de 3x4
-    M = m.reshape(3,4)
-    return M
+ 
+
+
+
+# EJERCICIO 2c Y 2b
+def devolverMatricesCalibracion3d(M,igualar_focales=False,skew_cero=False):
+    # Divido M (3x4) en A (3x3) y b (3,)
+    A = M[:, :3]
+    b = M[:, 3]
+
+    # Factorización QR de A inversa
+    A_inv = inversa(A)
+    Q1, R1 = calculaQR(A_inv)
+
+    # Recuperamos K y R provisionales
+    K0 = inversa(R1)
+    R0 = transpuesta(Q1)
+
+    # Normalizamos K para que K[2,2] = 1
+    c = K0[2, 2]
+    K = K0 / c
+
+    # Determinamos el signo del determinante de R0
+    det = determinante3x3(R0)
+
+    if det > 0:
+        s = 1
+    else:
+        s = -1
+
+    # Matriz de rotación con determinante positivo
+    R = s * R0
+
+    # Factor de escala de la proyección
+    escala = c * s
+
+    # Calculamos la traslación
+    t = s * matriz_por_vector(R1, b)
+    # restricciones del ej 2d
+    if igualar_focales or skew_cero:
+        t, K = aplicarRestricciones(K, t, igualar_focales, skew_cero)
+
+    return R, t, K
