@@ -345,6 +345,31 @@ def error_reproyeccion(H, img_pts, obj_pts):
         suma = suma + dx * dx + dy * dy
     return np.sqrt(suma / n)
 
+
+def circulo(centro, radio, N=50):
+    """Puntos de un círculo en METROS, sin usar cos/sin (no están permitidas).
+    Usa que con t entre -1 y 1, el punto ((1-t^2)/(1+t^2), 2t/(1+t^2)) recorre la mitad
+    derecha de un círculo de radio 1; la mitad izquierda es la derecha espejada."""
+    cant = 2 * N + 1
+    R = np.zeros((2 * cant, 2))
+    for i in range(cant):
+        t = (i - N) / N
+        x = (1 - t * t) / (1 + t * t)
+        y = 2 * t / (1 + t * t)
+        R[i, 0] = centro[0] + radio * x
+        R[i, 1] = centro[1] + radio * y
+        R[cant + i, 0] = centro[0] - radio * x
+        R[cant + i, 1] = centro[1] + radio * y
+    return R
+
+def recta_vertical(c, ancho, N=2):
+    """Puntos de la recta 'U = c' para V entre 0 y ancho (paralela a la línea de fondo)."""
+    R = np.zeros((N + 1, 2))
+    for i in range(N + 1):
+        R[i, 0] = c
+        R[i, 1] = ancho * i / N
+    return R
+
 """MÓDULO 1"""
 # =============================================================================
 # Recibe dos numeros x e y, y calcula el error de aproximar 
