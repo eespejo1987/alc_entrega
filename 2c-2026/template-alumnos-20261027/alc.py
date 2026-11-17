@@ -338,7 +338,7 @@ def aplicar_homografia(H, pts):
 
 def error_reproyeccion(H, img_pts, obj_pts):
     """Qué tan lejos (en píxeles, en promedio cuadrático) caen los puntos proyectados con H
-    respecto de donde vos los marcaste. Si da pocos píxeles, H está bien."""
+    respecto de donde los marcamos. """
     pred = aplicar_homografia(H, obj_pts)
     n = obj_pts.shape[0]
     suma = 0.0
