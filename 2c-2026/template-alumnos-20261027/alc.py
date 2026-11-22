@@ -74,7 +74,7 @@ def resolverDLT3D(Q):
     return M
 
 # EJERCICIO 2c
-def devolverMatricesCalibracion3d(M):
+'''def devolverMatricesCalibracion3d(M):
     # Divido M (3x4) en A (3x3) y b (3,)
     A = M[:, :3]
     b = M[:, 3]
@@ -107,6 +107,78 @@ def devolverMatricesCalibracion3d(M):
 
     # Calculamos la traslación
     t = s * matriz_por_vector(R1, b)
+
+    return R, t, K'''
+
+
+def determinante3x3(A):
+    return (
+        A[0,0] * (A[1,1]*A[2,2] - A[1,2]*A[2,1])
+        - A[0,1] * (A[1,0]*A[2,2] - A[1,2]*A[2,0])
+        + A[0,2] * (A[1,0]*A[2,1] - A[1,1]*A[2,0])
+    )
+    
+def aplicarRestricciones(K, t, igualar_focales=False, skew_cero=False):
+    K_original = K.copy()
+    K_nueva = K.copy()
+
+    if igualar_focales:
+        K_nueva[1, 1] = K_nueva[0, 0]
+
+    if skew_cero:
+        K_nueva[0, 1] = 0
+
+    # Recalculamos t manteniendo R fija
+    t_nueva = matriz_por_vector(
+        inversa(K_nueva),
+        matriz_por_vector(K_original, t)
+    )
+
+    return t_nueva, K_nueva
+
+
+# EJERCICIO 2c Y 2b
+def devolverMatricesCalibracion3d(
+    M,
+    igualar_focales=False,
+    skew_cero=False
+):
+    # Divido M (3x4) en A (3x3) y b (3,)
+    A = M[:, :3]
+    b = M[:, 3]
+
+    # Factorización QR de A inversa
+    A_inv = inversa(A)
+    Q1, R1 = calculaQR(A_inv)
+
+    # Recuperamos K y R provisionales
+    K0 = inversa(R1)
+    R0 = transpuesta(Q1)
+
+    # Normalizamos K para que K[2,2] = 1
+    c = K0[2, 2]
+    K = K0 / c
+
+    # Determinamos el signo del determinante de R0
+    det = determinante3x3(R0)
+
+    if det > 0:
+        s = 1
+    else:
+        s = -1
+
+    # Matriz de rotación con determinante positivo
+    R = s * R0
+
+    # Factor de escala de la proyección
+    escala = c * s
+    
+    # Calculamos la traslación
+    t = s * matriz_por_vector(R1, b)
+    # restricciones del ej 2d
+    if igualar_focales or skew_cero:
+        t, K = aplicarRestricciones(
+            K, t, igualar_focales, skew_cero)
 
     return R, t, K
 
@@ -338,7 +410,7 @@ def aplicar_homografia(H, pts):
 
 def error_reproyeccion(H, img_pts, obj_pts):
     """Qué tan lejos (en píxeles, en promedio cuadrático) caen los puntos proyectados con H
-    respecto de donde los marcamos. """
+    respecto de donde los marcamos. Si da pocos píxeles, H está bien."""
     pred = aplicar_homografia(H, obj_pts)
     n = obj_pts.shape[0]
     suma = 0.0
@@ -470,6 +542,52 @@ def error_reproyeccion_3d_ej5(M, uv, P3):
         dv = pred[i, 1] - uv[i][1]
         s = s + du * du + dv * dv
     return np.sqrt(s / n)
+
+def tiempo_desde_nombre(nombre):
+    """'img_10_18_47_351.jpg' -> segundos = h*3600 + m*60 + s + ms/1000.
+    SUPUESTO: el nombre es hora_min_seg_ms (confirmarlo con los nombres reales de las capturas)."""
+    partes = nombre.replace('.jpg', '').replace('.png', '').split('_')
+    h = int(partes[-4]); m = int(partes[-3]); s = int(partes[-2]); ms = int(partes[-1])
+    return h * 3600.0 + m * 60.0 + s + ms / 1000.0
+
+
+def pixel_a_metros(H, pixeles):
+    """Pixeles del PISO (n x 2) -> metros (n x 2) con H^-1 (la misma idea del inciso a del ejercicio 4)."""
+    return aplicar_homografia(inversa(H), pixeles)
+
+
+def velocidades_consecutivas(tiempos, pos):
+    """Velocidad entre cada par de capturas consecutivas: |P(k+1) - P(k)| / (t(k+1) - t(k)), en m/s."""
+    n = len(tiempos)
+    v = np.zeros(n - 1)
+    for k in range(n - 1):
+        dx = pos[k + 1, 0] - pos[k, 0]
+        dy = pos[k + 1, 1] - pos[k, 1]
+        v[k] = np.sqrt(dx * dx + dy * dy) / (tiempos[k + 1] - tiempos[k])
+    return v
+
+
+def pendiente(t, y):
+    """Pendiente de la recta de mínimos cuadrados y = a + b t (fórmula cerrada, sin librerías)."""
+    n = len(t)
+    mt = 0.0; my = 0.0
+    for i in range(n):
+        mt = mt + t[i] / n; my = my + y[i] / n
+    num = 0.0; den = 0.0
+    for i in range(n):
+        num = num + (t[i] - mt) * (y[i] - my)
+        den = den + (t[i] - mt) ** 2
+    return num / den
+
+
+def velocidad_por_ajuste(tiempos, pos):
+    """Velocidad media a lo largo de toda la secuencia, ajustando una recta a X(t) y a Y(t)
+    (más robusta al ruido que usar solo dos capturas). Devuelve (vx, vy, rapidez) en m/s."""
+    vx = pendiente(tiempos, pos[:, 0])
+    vy = pendiente(tiempos, pos[:, 1])
+    return vx, vy, np.sqrt(vx * vx + vy * vy)
+
+
 
 """MÓDULO 1"""
 # =============================================================================
