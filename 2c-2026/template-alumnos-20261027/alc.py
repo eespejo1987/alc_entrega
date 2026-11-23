@@ -283,8 +283,8 @@ def producto_vectorial(u, v):
     w[2] = u[0]*v[1] - u[1]*v[0]
     return w
 
-
-def obtenerPose2D(Hj, K):
+#Dejo la versión anterior
+"""def obtenerPose2D(Hj, K):
     M = matriz_x_matriz(inversa(K) , Hj)
     a1 = M[:, 0]
     a2 = M[:, 1]
@@ -297,7 +297,26 @@ def obtenerPose2D(Hj, K):
     r3 = producto_vectorial(r1, r2) 
     R = np.hstack((r1.reshape(3, 1), r2.reshape(3, 1), r3.reshape(3, 1)))
     t = lam * a3
+    return R, t"""
+
+def obtenerPose2D(Hj, K):
+    M = matriz_x_matriz(inversa(K), Hj)
+    a1 = M[:, 0]
+    a2 = M[:, 1]
+    a3 = M[:, 2]
+    lam = 1 / norma(a1, 2)
+    if (lam * a3)[2] < 0:
+        lam = -lam
+    r1 = lam * a1
+    r2 = lam * a2
+    q1 = r1 / norma(r1, 2)
+    w2 = r2 - producto_interno(r2, q1) * q1
+    q2 = w2 / norma(w2, 2)
+    q3 = producto_vectorial(q1, q2)
+    R = np.hstack((q1.reshape(3, 1),q2.reshape(3, 1),q3.reshape(3, 1)))
+    t = lam * a3
     return R, t
+
 
 
 # Ejercicio 4
