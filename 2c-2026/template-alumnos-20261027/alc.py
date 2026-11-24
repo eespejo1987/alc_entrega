@@ -71,6 +71,9 @@ def resolverDLT3D(Q):
     m = m/norma(m,2)
     # construimos la matriz de 3x4
     M = m.reshape(3,4)
+    # Fijamos el signo de la matriz de proyección
+    if determinante3x3(M[:, :3]) < 0:
+        M = -M
     return M
 
 # EJERCICIO 2c
@@ -110,7 +113,7 @@ def resolverDLT3D(Q):
 
     return R, t, K'''
 
-
+# auxiliares
 def determinante3x3(A):
     return (
         A[0,0] * (A[1,1]*A[2,2] - A[1,2]*A[2,1])
@@ -137,7 +140,7 @@ def aplicarRestricciones(K, t, igualar_focales=False, skew_cero=False):
     return t_nueva, K_nueva
 
 
-# EJERCICIO 2c Y 2b
+# EJERCICIO 2c Y 2d
 def devolverMatricesCalibracion3d(
     M,
     igualar_focales=False,
@@ -147,40 +150,31 @@ def devolverMatricesCalibracion3d(
     A = M[:, :3]
     b = M[:, 3]
 
-    # Factorización QR de A inversa
+    # Factorización QR de A inversa mediante Gram-Schmidt
     A_inv = inversa(A)
-    Q1, R1 = calculaQR(A_inv)
+    # usamos metodo GS para que la diagonal de K sea positiva
+    Q1, R1 = calculaQR(A_inv, metodo='GS')
 
-    # Recuperamos K y R provisionales
+    # Recuperamos K y R
     K0 = inversa(R1)
-    R0 = transpuesta(Q1)
+    R = transpuesta(Q1)
 
     # Normalizamos K para que K[2,2] = 1
     c = K0[2, 2]
     K = K0 / c
 
-    # Determinamos el signo del determinante de R0
-    det = determinante3x3(R0)
-
-    if det > 0:
-        s = 1
-    else:
-        s = -1
-
-    # Matriz de rotación con determinante positivo
-    R = s * R0
-
-    # Factor de escala de la proyección
-    escala = c * s
-    
     # Calculamos la traslación
-    t = s * matriz_por_vector(R1, b)
-    # restricciones del ej 2d
+    t = matriz_por_vector(R1, b)
+
+    # Restricciones del ejercicio 2d
     if igualar_focales or skew_cero:
         t, K = aplicarRestricciones(
-            K, t, igualar_focales, skew_cero)
+            K, t, igualar_focales, skew_cero
+        )
 
     return R, t, K
+
+
 
 
 ## EJERCICIO 3  ##
