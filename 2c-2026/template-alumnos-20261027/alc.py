@@ -899,13 +899,15 @@ def condMC(A, p, Np):
     Devuelve el numero de condicion de A usando la norma inducida p.
     """
     normaPdeA = normaMatMC(A,p,p,Np)[0]
-    normaPdeAinv = normaMatMC(np.linalg.inv(A),p,p,Np)[0] #Estamos usando la función inversa de numpy porque es previo a calcular inversa con LU
+    #normaPdeAinv = normaMatMC(np.linalg.inv(A),p,p,Np)[0] #Estamos usando la función inversa de numpy porque es previo a calcular inversa con LU
+    normaPdeAinv = normaMatMC(inversa(A),p,p,Np)[0]
     nroDeCondiconDeA = normaPdeA * normaPdeAinv
     return nroDeCondiconDeA
 #version que no pasa los tests
 
 def condMC2(A,p):
-    return normaMatMC(A,p,p,1000)[0]*normaMatMC(np.linalg.inv(A),p, p,1000)[0]
+    #return normaMatMC(A,p,p,1000)[0]*normaMatMC(np.linalg.inv(A),p, p,1000)[0]
+    return normaMatMC(A,p,p,1000)[0]*normaMatMC(inversa(A),p, p,1000)[0]
           
 def condExacta(A, p):
     """
@@ -913,7 +915,8 @@ def condExacta(A, p):
     la ecuacion (1) usando la norma p.
     """
     normaPdeA = normaExacta(A, p)
-    normaPdeAinv = normaExacta(np.linalg.inv(A), p)
+    #normaPdeAinv = normaExacta(np.linalg.inv(A), p)
+    normaPdeAinv = normaExacta(inversa(A), p)    
     nroDeCondicionDeA = normaPdeA * normaPdeAinv
     return nroDeCondicionDeA
 
